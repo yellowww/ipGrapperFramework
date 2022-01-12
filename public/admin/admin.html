@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>admin panel</title>
+    <script src="script.js"></script>
+    <style>
+      a {
+        text-decoration: none;
+        color: inherit;
+      }
+    </style>
+
+    <script>
+    var page = {
+      addButtonLinks: function() {
+        var currentKey = auth.getCurrentKey();
+        document.getElementById("dataLink").href = "getData?key="+currentKey;
+        document.getElementById("pathLink").href = "addPath?key="+currentKey;
+        document.getElementById("adminLink").href = "viewAdmin?key="+currentKey;
+      }
+    }
+    var ajax = {
+      newReq: function(url,cb) {
+        this.callback = cb;
+        var req = new XMLHttpRequest();
+        //var url = '/req/ajax/getAdminData';
+        var callback = cb;
+        req.open('GET',url,true); // set this to POST if you would like
+        req.addEventListener('load',function() {
+          var response = this.responseText;
+          var parsedResponse = JSON.parse(response);
+          callback(parsedResponse);
+        });
+        req.addEventListener('error',this.onError);
+
+        req.send();
+      },
+      onError: function() {
+        console.log('error receiving async AJAX call');
+      }
+    }
+
+    var auth = {
+      currentPermissionLevel:4,
+      authenticate: function(cb) {
+        var thisKey = this.getCurrentKey();
+        if(!thisKey) {cb(false);return};
+        console.log("trying to authenticate")
+        ajax.newReq('/req/ajax/auth?key='+thisKey, function(data) {
+          if(data.noData) {cb(false);return;}
+          console.log("authentication sucsessfull!")
+          auth.currentPermissionLevel = data.plevel;
+          cb(true);
+        })
+      },
+      getCurrentKey: function() {
+        var thisKey = window.location.href.split("?key=")[1];
+        if(!thisKey) return undefined;
+        thisKey = thisKey.split('&')[0];
+        return thisKey;
+      }
+    }
+
+    window.onload = function() {
+      auth.authenticate(function(sucsess) {
+        if(sucsess) {
+          page.addButtonLinks();
+        } else {
+          window.location.href = "https://en.wikipedia.org/wiki/Digital_security";
+        }
+      })
+    }
+
+    </script>
+  </head>
+  <body>
+
+    <h1>admin panel</h1>
+    <button><a href="getData" id="dataLink">view collected data</button>
+    <button><a href="addPath" id="pathLink">add new path</a></button>
+    <button><a href="viewAdmin" id="adminLink">view admin permissions</a></button>
+  </body>
+</html>

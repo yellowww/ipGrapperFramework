@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>more data</title>
+
+    <script>
+      var page = {
+        query:undefined,
+        getQuery: function() {
+          var split = window.location.href.split("query=")[1];
+          console.log(!split)
+          if(!split) window.location.href = "https://en.wikipedia.org/wiki/Digital_security";
+          split = split.split('&')[0];
+          this.query = split;
+        }
+      }
+      var ajax = {
+        newReq: function(url,cb) {
+          this.callback = cb;
+          var req = new XMLHttpRequest();
+          //var url = '/req/ajax/getAdminData';
+          var callback = cb;
+          req.open('GET',url,true); // set this to POST if you would like
+          req.addEventListener('load',function() {
+            var response = this.responseText;
+            var parsedResponse = JSON.parse(response);
+            callback(parsedResponse);
+          });
+          req.addEventListener('error',this.onError);
+
+          req.send();
+        },
+        onError: function() {
+          console.log('error receiving async AJAX call');
+        }
+      }
+
+      var auth = {
+        currentPermissionLevel:4,
+        authenticate: function(cb) {
+          var thisKey = this.getCurrentKey();
+          if(!thisKey) {cb(false);return;}
+          console.log("trying to authenticate")
+          ajax.newReq('/req/ajax/auth?key='+thisKey, function(data) {
+            if(data.noData) {cb(false);return;}
+            console.log("authentication sucsessfull!")
+            auth.currentPermissionLevel = data.plevel;
+            cb(true);
+          })
+        },
+        getCurrentKey: function() {
+          var thisKey = window.location.href.split("key=")[1];
+          if(!thisKey) return undefined;
+          thisKey = thisKey.split('&')[0];
+          return thisKey;
+        }
+      }
+
+      function init() {
+        auth.authenticate(function(sucsess) {
+          if(sucsess) {
+            page.getQuery();
+            document.getElementById("title").innerHTML = "view more data on path "+page.query
+            ajax.newReq('/req/ajax/getMoreData?query='+page.query, function (queryData) {
+              if(queryData[0].x != "undefined") {
+                document.getElementById("mapsLink").href = "https://maps.google.com/?q="+queryData[0].x+","+queryData[0].y;
+              } else {
+                document.getElementById("mapsLink").style.display="none"
+              };
+              var dataE = document.createElement('h2');
+              queryData = JSON.stringify(queryData[0])
+              queryData = queryData.replace(/,/g, "<br><br>");
+              queryData = queryData.replace(/"/g, "");
+              queryData = queryData.replace(/}/g, "");
+              queryData = queryData.replace(/{/g, "");
+              queryData = queryData.replace(/null/g, "undefined");
+              dataE.innerHTML = queryData;
+              document.body.appendChild(dataE);
+
+
+            })
+          } else {
+            window.location.href = "https://en.wikipedia.org/wiki/Digital_security";
+          }
+        })
+      }
+      window.onload = function() {
+        init();
+      }
+    </script>
+  </head>
+  <body>
+    <h1 id="title"></h1>
+    <h2> <a id="mapsLink" target="_blank">open location in google maps</a> </h2>
+  </body>
+</html>

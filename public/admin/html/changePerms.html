@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>View data</title>
+    <style>
+      table {
+        width:75vw;
+        margin-left:12.5vw;
+        text-align:center;
+        border: 5px solid black;
+      }
+      td {
+        padding: 10px;
+      }
+      .deleteButton {
+        display:block !important;
+        position:absolute;
+        background-color:blue;
+        width:50px;
+        height:50px;
+        top:0px;
+        left:0px;
+      }
+
+    </style>
+    <script>
+        var page = {
+          fixURL: function() {
+            var thisKey = auth.getCurrentKey();
+            var base = window.location.href.split("/admin/")[0];
+            base+="/admin/viewAdmin?key="+thisKey;
+            if(window.location.href != base)window.location.href = base;
+          },
+          addFormActions: function() {
+            var currentKey = auth.getCurrentKey();
+            document.getElementById("backButton").href = "../admin?key="+currentKey;
+            document.getElementById("newForm").action = "addPerms?key="+currentKey;
+            document.getElementById("deleteForm").action = "deletePerms?key="+currentKey;
+          },
+          removeUnprivleged: function() {
+            if(auth.currentPermissionLevel<4) {
+              document.getElementById("deleteForm").style.display = "none";
+              document.getElementById("deleteFormText").innerHTML+= "<br><br> permission level too low";
+            }
+            if(auth.currentPermissionLevel<3) {
+              document.getElementById("newForm").style.display = "none";
+              document.getElementById("newFormText").innerHTML+= "<br><br> permission level too low";
+            }
+          }
+        }
+        var auth = {
+          currentPermissionLevel:4,
+          authenticate: function(cb) {
+            var thisKey = this.getCurrentKey();
+            if(!thisKey) {cb(false);return;}
+            console.log("trying to authenticate")
+            ajax.newReq('/req/ajax/auth?key='+thisKey, function(data) {
+              if(data.noData) {cb(false);return;}
+              console.log("authentication sucsessfull!")
+              auth.currentPermissionLevel = data.plevel;
+              cb(true);
+            })
+          },
+          getCurrentKey: function() {
+            var thisKey = window.location.href.split("?key=")[1];
+            if(!thisKey) return undefined;
+            thisKey = thisKey.split('&')[0];
+            return thisKey;
+          }
+        }
+        var ajax = {
+          newReq: function(url,cb) {
+            this.callback = cb;
+            var req = new XMLHttpRequest();
+            //var url = '/req/ajax/getAdminData';
+            var callback = cb;
+            req.open('GET',url,true); // set this to POST if you would like
+            req.addEventListener('load',function() {
+              var response = this.responseText;
+              var parsedResponse = JSON.parse(response);
+              callback(parsedResponse);
+            });
+            req.addEventListener('error',this.onError);
+
+            req.send();
+          },
+          onError: function() {
+            console.log('error receiving async AJAX call');
+          }
+        }
+
+        window.onload = function() {
+          auth.authenticate(function(sucsess) {
+            if(sucsess) {
+              document.getElementById("aKey").value = key.generate();
+              page.fixURL();
+              page.addFormActions();
+              page.removeUnprivleged();
+              ajax.newReq('/req/ajax/getAdminData',function(data) {
+                table.build(data);
+              });
+            } else {
+              window.location.href = "https://en.wikipedia.org/wiki/Digital_security";
+            }
+          });
+        }
+
+        var table = {
+          build: function(data) {
+            var table = document.getElementById("table");
+            for(var i=0;i<data.length;i++) {
+              var tr = document.createElement('tr');
+              tr.appendChild(this.newCell(i));
+              tr.appendChild(this.newCell(data[i].name));
+              var keyValE = this.newCell(data[i].keyVal);
+              tr.appendChild(keyValE);
+              if(data[i].plevel>auth.currentPermissionLevel) keyValE.innerHTML = '***************';
+              tr.appendChild(this.newCell(data[i].plevel));
+              table.appendChild(tr);
+            }
+          },
+          newCell: function(html) {
+            var newCell = document.createElement('td');
+            newCell.innerHTML = html;
+            return newCell;
+          },
+          newDeleteButton: function(id) {
+            var form = document.createElement("form");
+            form.action = "deleteData";
+            form.method = "post";
+            form.classList.add("deleteButton")
+            var input = document.createElement("input");
+            input.type = "text";
+            input.value = id;
+            input.name = "deletePara";
+            form.appendChild(input);
+            var deleteButton = document.createElement('input');
+            deleteButton.type = "submit";
+            deleteButton.value = "delete";
+            //deleteButton.style.display="default"
+            form.appendChild(deleteButton);
+            return form;
+          }
+        }
+
+        var key = {
+          generate: function() {
+            var allChars = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','0','1','2','3','4','5','6','7','8','9'];
+            var pathLen = 15;
+            var path = '';
+            for (var i = 0; i < pathLen; i++) {
+              var char = Math.floor(Math.random()*allChars.length);
+              path+=allChars[char];
+            }
+            return path;
+          }
+        }
+    </script>
+
+  </head>
+  <body>
+    <a href="../admin" id="backButton">back</a>
+    <h1>View admin permissions</h1>
+    <table id="table">
+      <tr>
+        <th> index </th>
+        <th> specified name </th>
+        <th> admin key </th>
+        <th> permission level </th>
+      </tr>
+    </table>
+    <h2 id="deleteFormText">Delete entry:</h2>
+    <form action="deletePerms" method="post" id="deleteForm">
+      <label>key to delete:</label> <input type="text" name="dKey" id="dKey" value="">
+      <input type="submit" value="delete">
+    </form>
+    <br>
+    <h2 id="newFormText">Add new permission: </h2>
+    <form action="addPerms" method="post" id="newForm">
+      <label>name:</label> <input type="text" name="name" id="name" value=""><br>
+      <label>key:</label> <input type="text" name="aKey" id="aKey" value=""><br>
+      <label>permission level:</label> <input type="text" name="pLevel" id="pLevel" value="0"><br>
+      <input type="submit" value="add permission">
+    </form>
+    <br>
+    <h3>Permission levels<h3>
+    0: can view data <br>
+    1: can add paths <br>
+    2: can remove paths <br>
+    3: can add admins <br>
+    4 can remove admins
+  </body>
+</html>

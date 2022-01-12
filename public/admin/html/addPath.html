@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>add url path</title>
+    <script>
+      var page = {
+        fixURL: function() {
+          var thisKey = auth.getCurrentKey();
+          var base = window.location.href.split("/admin/")[0];
+          base+="/admin/addPath?key="+thisKey;
+          if(window.location.href != base)window.location.href = base;
+        },
+        addFormActions: function() {
+          var currentKey = auth.getCurrentKey();
+          document.getElementById("backButton").href = "../admin?key="+currentKey;
+          document.getElementById("addEntry").action = "submitData?key="+currentKey;
+        },
+        removeUnprivleged: function() {
+          if(auth.currentPermissionLevel<1) {
+            document.getElementById("addEntry").style.display = 'none';
+            document.getElementById("addEntryText").innerHTML+="<br> permission level too low";
+          }
+        }
+      }
+
+      var auth = {
+        currentPermissionLevel:4,
+        authenticate: function(cb) {
+          var thisKey = this.getCurrentKey();
+          if(!thisKey) {cb(false);return;}
+          console.log("trying to authenticate")
+          ajax.newReq('/req/ajax/auth?key='+thisKey, function(data) {
+            if(data.noData) {cb(false);return;}
+            console.log("authentication sucsessfull!")
+            auth.currentPermissionLevel = data.plevel;
+            cb(true);
+          })
+        },
+        getCurrentKey: function() {
+          var thisKey = window.location.href.split("?key=")[1];
+          if(!thisKey) return undefined;
+          thisKey = thisKey.split('&')[0];
+          return thisKey;
+        }
+      }
+
+      var ajax = {
+        newReq: function(url,cb) {
+          this.callback = cb;
+          var req = new XMLHttpRequest();
+          //var url = '/req/ajax/getAdminData';
+          var callback = cb;
+          req.open('GET',url,true); // set this to POST if you would like
+          req.addEventListener('load',function() {
+            var response = this.responseText;
+            var parsedResponse = JSON.parse(response);
+            callback(parsedResponse);
+          });
+          req.addEventListener('error',this.onError);
+
+          req.send();
+        },
+        onError: function() {
+          console.log('error receiving async AJAX call');
+        }
+      }
+
+      function getPathName() {
+        var allChars = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','0','1','2','3','4','5','6','7','8','9'];
+        var pathLen = 10;
+        var path = '';
+        for (var i = 0; i < pathLen; i++) {
+          var char = Math.floor(Math.random()*allChars.length);
+          path+=allChars[char];
+        }
+        return path;
+      }
+      window.onload = function() {
+        auth.authenticate(function(sucsess) {
+          if(sucsess) {
+            page.addFormActions();
+            page.fixURL();
+            page.removeUnprivleged();
+            document.getElementById("path").value = getPathName();
+          } else {
+            window.location.href = "https://en.wikipedia.org/wiki/Digital_security";
+          }
+        })
+
+      }
+    </script>
+  </head>
+  <body>
+    <a href="../admin" id="backButton">back</a>
+    <h1 id="addEntryText">Add new url path</h1>
+    <form action="submitData" method="post" id="addEntry">
+      <label>Path: </label>
+      <input type="text" id="path" name="path" value=""><br><br>
+      <label>Name: </label>
+      <input type="text" id="name" name="name" value=""><br><br>
+      <input type="submit" value="submit">
+    </form>
+  </body>
+</html>

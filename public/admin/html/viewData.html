@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>View data</title>
+    <style>
+      table {
+        width:75vw;
+        margin-left:12.5vw;
+        text-align:center;
+        border: 5px solid black;
+      }
+      td {
+        padding: 10px;
+      }
+      .deleteButton {
+        display:block !important;
+        position:absolute;
+        background-color:blue;
+        width:50px;
+        height:50px;
+        top:0px;
+        left:0px;
+      }
+
+    </style>
+    <script>
+      var page = {
+        fixURL: function() {
+          var thisKey = auth.getCurrentKey();
+          var base = window.location.href.split("/admin/")[0];
+          base+="/admin/viewAdmin?key="+thisKey;
+          if(window.location.href != base)window.location.href = base;
+        },
+        addFormActions: function() {
+          var currentKey = auth.getCurrentKey();
+          document.getElementById("backButton").href = "../admin?key="+currentKey;
+          document.getElementById("deleteEntry").action = "deleteEntry?key="+currentKey;
+        },
+        removeUnprivleged: function() {
+          if(auth.currentPermissionLevel<2) {
+            document.getElementById("deleteEntry").style.display = 'none';
+            document.getElementById("deleteEntryText").innerHTML+="<br> permission level too low";
+          }
+        }
+      }
+      var ajax = {
+        newReq: function(url,cb) {
+          this.callback = cb;
+          var req = new XMLHttpRequest();
+          //var url = '/req/ajax/getAdminData';
+          var callback = cb;
+          req.open('GET',url,true); // set this to POST if you would like
+          req.addEventListener('load',function() {
+            var response = this.responseText;
+            var parsedResponse = JSON.parse(response);
+            callback(parsedResponse);
+          });
+          req.addEventListener('error',this.onError);
+
+          req.send();
+        },
+        onError: function() {
+          console.log('error receiving async AJAX call');
+        }
+      }
+
+        var auth = {
+          currentPermissionLevel:4,
+          authenticate: function(cb) {
+            var thisKey = this.getCurrentKey();
+            if(!thisKey) {cb(false);return;}
+            console.log("trying to authenticate")
+            ajax.newReq('/req/ajax/auth?key='+thisKey, function(data) {
+              if(data.noData) {cb(false);return;}
+              console.log("authentication sucsessfull!")
+              auth.currentPermissionLevel = data.plevel;
+              cb(true);
+            })
+          },
+          getCurrentKey: function() {
+            var thisKey = window.location.href.split("?key=")[1];
+            if(!thisKey) return undefined;
+            thisKey = thisKey.split('&')[0];
+            return thisKey;
+          }
+        }
+
+        window.onload = function() {
+          auth.authenticate(function(sucsess) {
+            if(sucsess) {
+              page.addFormActions()
+              page.removeUnprivleged();
+              ajax.newReq('/req/ajax/getData',function(data) {
+                table.build(data);
+              });
+            } else {
+              window.location.href = "https://en.wikipedia.org/wiki/Digital_security";
+            }
+          })
+
+        }
+
+        var table = {
+          build: function(data) {
+            var table = document.getElementById("table");
+            for(var i=0;i<data.length;i++) {
+              var tr = document.createElement('tr');
+              tr.appendChild(this.newCell(i));
+              tr.appendChild(this.newCell(data[i].name));
+              tr.appendChild(this.newCell(data[i].ip));
+              tr.appendChild(this.newCell(data[i].path));
+              tr.appendChild(this.newDataLink(data[i].path))
+              table.appendChild(tr);
+            }
+          },
+          newCell: function(html) {
+            var newCell = document.createElement('td');
+            newCell.innerHTML = html;
+            return newCell;
+          },
+          newDataLink: function(path) {
+            var newCell = document.createElement('td');
+            var newLink = document.createElement('a');
+            newLink.href = "moreData?key="+auth.getCurrentKey()+"&query="+path;
+            newLink.innerHTML = "more data";
+            newLink.target = "_blank";
+            newCell.appendChild(newLink)
+            return newCell;
+          }
+        }
+    </script>
+
+  </head>
+  <body>
+    <a href="../admin" id="backButton">back</a>
+    <h1>View collected Data</h1>
+    <table id="table">
+      <tr>
+        <th> index </th>
+        <th> specified name </th>
+        <th> ip </th>
+        <th> URL path </th>
+        <th>more data</th>
+      </tr>
+    </table>
+    <h2 id="deleteEntryText">Delete entry:</h2>
+    <form action="deleteEntry" method="post" id="deleteEntry">
+      <label>path to delete:</label> <input type="text" name="path" id="path" value="">
+      <input type="submit" value="delete">
+    </form>
+
+  </body>
+</html>
