@@ -1,11 +1,11 @@
 # ipGrapperFramework
 An example framework for an IP grabber
 
-#setup
+## setup
 
- This program requires the node express module.
+This program requires the node express module.
  
-## database
+### database
 
  you must connect the index.js file to your mysql database. 
  The first time you start this program make sure to call the `configureTables` function in the index.js file.
